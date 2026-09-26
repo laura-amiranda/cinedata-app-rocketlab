@@ -4,10 +4,12 @@ import { addReview, deleteMovie, getMovie } from '../api';
 import type { MovieDetail } from '../types';
 import { StarRatingDisplay } from '../components/StarRating';
 import { limparTitulo } from '../utils/text';
+import { useIsAuthenticated } from '../auth';
 
 export function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const authenticated = useIsAuthenticated();
 
   const [movie, setMovie] = useState<MovieDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,14 +116,16 @@ export function MovieDetailPage() {
             )}
           </div>
 
-          <div className="actions">
-            <Link to={`/movies/${movie.sk_movie_id}/edit`} className="button-secondary">
-              Editar
-            </Link>
-            <button className="button-danger" onClick={handleDelete}>
-              Remover filme
-            </button>
-          </div>
+          {authenticated && (
+            <div className="actions">
+              <Link to={`/movies/${movie.sk_movie_id}/edit`} className="button-secondary">
+                Editar
+              </Link>
+              <button className="button-danger" onClick={handleDelete}>
+                Remover filme
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

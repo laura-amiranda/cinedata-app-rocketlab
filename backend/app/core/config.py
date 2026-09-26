@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     backend_cors_origins: list[str] = ["http://localhost:5173"]
     log_level: str = "INFO"
 
+    admin_username: str = "admin"
+    admin_password: str = "admin123"
+    secret_key: str = "troque-essa-chave-em-producao"
+    access_token_expire_minutes: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

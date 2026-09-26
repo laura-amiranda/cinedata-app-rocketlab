@@ -1,14 +1,22 @@
+import { clearToken, getToken } from './auth';
 import type { MovieDetail, MoviePage, Review } from './types';
 
 const BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
   const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearToken();
+    }
     const body = await response.json().catch(() => null);
     const message = body?.detail ? JSON.stringify(body.detail) : `Erro ${response.status}`;
     throw new Error(message);
@@ -51,6 +59,23 @@ export function listMovies(
 
 export function listGenres(): Promise<string[]> {
   return request<string[]>('/movies/genres');
+}
+
+export interface LoginPayload {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export function login(payload: LoginPayload): Promise<LoginResponse> {
+  return request<LoginResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getMovie(skMovieId: string): Promise<MovieDetail> {

@@ -3,6 +3,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.dependencies import require_admin
+from app.core.cache import (
+    GENRES_CACHE_KEY,
+    cache_clear,
+    cache_get,
+    cache_set,
+    movies_list_cache_key,
+)
 from app.db.session import get_db
 from app.movies import service
 from app.movies.schemas import (
@@ -34,15 +42,28 @@ async def list_movies(
     nota_minima: float | None = Query(default=None, ge=0, le=10),
     session: AsyncSession = Depends(get_db),
 ) -> MoviePage:
+    cache_key = movies_list_cache_key(page, page_size, search, genero, ano, nota_minima)
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     items, total = await service.list_movies(
         session, page, page_size, search, genero, ano, nota_minima
     )
-    return MoviePage(items=items, total=total, page=page, page_size=page_size)
+    result = MoviePage(items=items, total=total, page=page, page_size=page_size)
+    cache_set(cache_key, result)
+    return result
 
 
 @router.get("/genres", response_model=list[str])
 async def list_genres(session: AsyncSession = Depends(get_db)) -> list[str]:
-    return await service.list_genres(session)
+    cached = cache_get(GENRES_CACHE_KEY)
+    if cached is not None:
+        return cached
+
+    genres = await service.list_genres(session)
+    cache_set(GENRES_CACHE_KEY, genres)
+    return genres
 
 
 @router.get("/{sk_movie_id}", response_model=MovieDetail)
@@ -52,7 +73,11 @@ async def get_movie(sk_movie_id: str, session: AsyncSession = Depends(get_db)) -
 
 
 @router.post("", response_model=MovieDetail, status_code=status.HTTP_201_CREATED)
-async def create_movie(payload: MovieCreate, session: AsyncSession = Depends(get_db)) -> MovieDetail:
+async def create_movie(
+    payload: MovieCreate,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+) -> MovieDetail:
     movie = await service.create_movie(
         session,
         titulo=payload.titulo,
@@ -63,12 +88,16 @@ async def create_movie(payload: MovieCreate, session: AsyncSession = Depends(get
     )
     await session.commit()
     movie = await _get_movie_or_404(session, movie.sk_movie_id)
+    cache_clear()
     return service.build_movie_detail_dict(movie)
 
 
 @router.patch("/{sk_movie_id}", response_model=MovieDetail)
 async def update_movie(
-    sk_movie_id: str, payload: MovieUpdate, session: AsyncSession = Depends(get_db)
+    sk_movie_id: str,
+    payload: MovieUpdate,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
 ) -> MovieDetail:
     movie = await _get_movie_or_404(session, sk_movie_id)
     movie = await service.update_movie(
@@ -82,14 +111,20 @@ async def update_movie(
     )
     await session.commit()
     movie = await _get_movie_or_404(session, sk_movie_id)
+    cache_clear()
     return service.build_movie_detail_dict(movie)
 
 
 @router.delete("/{sk_movie_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_movie(sk_movie_id: str, session: AsyncSession = Depends(get_db)) -> None:
+async def delete_movie(
+    sk_movie_id: str,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+) -> None:
     movie = await _get_movie_or_404(session, sk_movie_id)
     await service.delete_movie(session, movie)
     await session.commit()
+    cache_clear()
 
 
 @router.post(
@@ -107,4 +142,5 @@ async def create_review(
         comentario=payload.comentario,
     )
     await session.commit()
+    cache_clear()
     return review
