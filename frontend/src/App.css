@@ -75,6 +75,51 @@
   border-color: var(--primary);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.button-login {
+  display: inline-flex;
+  align-items: center;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.button-login:hover {
+  background: #ffc766;
+}
+
+.button-logout {
+  background: none;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.button-logout:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.login-form {
+  max-width: 360px;
+}
+
 /* ---------- Layout ---------- */
 
 .page {

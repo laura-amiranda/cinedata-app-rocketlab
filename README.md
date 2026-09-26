@@ -9,8 +9,10 @@ Sistema de avaliação de filmes inspirado no Letterboxd, desenvolvido como part
 - Filtros por gênero, ano e nota mínima, combináveis com a busca por texto
 - Layout responsivo, adaptado para desktop e mobile
 - Página de detalhes com elenco, direção, produtoras, sinopse e histórico de avaliações
-- Adição de novas avaliações (nota de 0 a 10 + comentário)
+- Adição de novas avaliações (nota de 0 a 10 + comentário), livre para qualquer visitante
 - Cálculo automático da nota média de cada filme
+- Login de administrador (JWT) protegendo criar, editar e remover filmes
+- Cache em memória nas consultas de listagem e gêneros, invalidado automaticamente a cada alteração
 - Testes automatizados no frontend (Vitest + Testing Library) e no backend (pytest)
 
 ## Stack
@@ -18,6 +20,7 @@ Sistema de avaliação de filmes inspirado no Letterboxd, desenvolvido como part
 - **Frontend:** Vite + React + TypeScript
 - **Backend:** FastAPI (Python)
 - **Banco de dados:** SQLite, com SQLAlchemy (ORM) e Alembic (migrações)
+- **Autenticação:** JWT (PyJWT)
 
 ## Estrutura do projeto
 
@@ -30,8 +33,9 @@ backend/
   tests/          # testes automatizados da API (pytest)
 frontend/
   src/
-    pages/        # telas (catálogo, detalhes, formulário)
+    pages/        # telas (catálogo, detalhes, formulário, login)
     components/   # componentes reutilizáveis (header, footer, avaliação)
+    auth.ts        # controle de sessão do administrador (token JWT)
     api.ts         # chamadas à API
     types.ts       # tipos TypeScript
     *.test.ts(x)   # testes automatizados (Vitest + Testing Library)
@@ -91,6 +95,25 @@ O app abre em `http://localhost:5173` (ou na porta indicada no terminal).
 
 O script `backend/scripts/seed_db.py` lê os arquivos CSV em `backend/seed_data/bases_atv_dev1/` e `backend/seed_data/bases_atv_dev_2/` e popula todas as tabelas do banco (filmes, gêneros, elenco, produtoras, avaliações, etc). Ele só precisa ser executado uma vez — se o banco já tiver filmes cadastrados, o script não duplica os dados.
 
+## Autenticação
+
+Criar, editar e remover filmes exige login de administrador; avaliar um filme continua livre para qualquer pessoa, sem login.
+
+Credenciais padrão (definidas em `app/core/config.py`):
+
+- **Usuário:** `admin`
+- **Senha:** `admin123`
+
+Para usar credenciais próprias, adicione ao `.env` do backend:
+
+```
+ADMIN_USERNAME=seu_usuario
+ADMIN_PASSWORD=sua_senha
+SECRET_KEY=uma-chave-secreta-bem-grande-e-aleatoria
+```
+
+O login é feito na tela `/login` do frontend e retorna um token JWT válido por 60 minutos, guardado no navegador.
+
 ## Testes automatizados
 
 ### Backend (pytest)
@@ -100,7 +123,7 @@ cd backend
 pytest
 ```
 
-Os testes rodam contra um banco SQLite em memória, isolado do banco real (`rocketlab.db`), cobrindo o catálogo (busca, filtros, paginação), CRUD de filmes e avaliações, validações de entrada e o health check da API.
+Os testes rodam contra um banco SQLite em memória, isolado do banco real (`rocketlab.db`), cobrindo o catálogo (busca, filtros, paginação), CRUD de filmes e avaliações, validações de entrada, autenticação (login válido/inválido, rotas protegidas), cache de consultas e o health check da API.
 
 ### Frontend (Vitest + Testing Library)
 
